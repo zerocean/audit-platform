@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# 日志
+logs/
+*.log
+
+# 输出文件（含上传的 PDF 和解析结果）
+outputs/
+uploads/
+
+# 环境变量
+.env
+
+# 邮件去重
+processed_emails.json
+
+# 前端
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+
+# Hermes
+.hermes/
+
+# OS
+.DS_Store
+Thumbs.db

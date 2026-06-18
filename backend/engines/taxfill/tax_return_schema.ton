@@ -1,0 +1,1654 @@
+@schema form_id=BIR51 year_of_assessment=2024/25
+  description: "Profits Tax Return - Corporations (BIR51)"
+  form_version: 2025
+  total_fields: 127
+
+@part part_number=1
+  part_name_en: "STATEMENT OF ASSESSABLE PROFITS OR ADJUSTED LOSS"
+  part_name_zh: "应评税利润或经调整亏损陈述书"
+  field_count: 3
+
+  @field field_id=1.1 box=1
+    name_en: "Assessable Profits (before loss brought forward)"
+    name_zh: "应评税利润（结转亏损前）"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["Assessable profit"]
+    mutually_exclusive_with: [1.2]
+    validation_rules: ["must_equal_taxcomp_assessable_profit"]
+
+  @field field_id=1.2 box=2
+    name_en: "Adjusted Loss (before loss brought forward)"
+    name_zh: "经调整亏损（结转亏损前）"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["Adjusted loss"]
+    mutually_exclusive_with: [1.1]
+
+  @field field_id=1.3 box=3
+    name_en: "Loss brought forward from prior year"
+    name_zh: "上年度结转亏损"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["Loss brought forward", "Unrelieved loss"]
+
+@part part_number=2
+  part_name_en: "TAX LIABILITY OR REPAYMENT"
+  part_name_zh: "应缴税款或退税"
+  field_count: 3
+
+  @field field_id=2.1
+    name_en: "Tax Payable"
+    name_zh: "应缴税款"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: manual
+
+  @field field_id=2.2
+    name_en: "Tax Repayable"
+    name_zh: "应退税款"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: manual
+
+  @field field_id=2.3 box=4
+    name_en: "Two-tiered profits tax election"
+    name_zh: "两级制利得税选择"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: derived
+    @decision_tree
+      description: "Assessable profit > 0? No -> No. Yes -> Loss b/f > profit? Yes -> No. No -> MANUAL."
+      step: "IF Part_1_1 == 0 THEN No"
+      step: "IF Part_1_3 > Part_1_1 THEN No"
+      step: "ELSE -> MANUAL REVIEW"
+      default_if_uncertain: ""
+    reasoning: "Two-tiered tax requires manual judgment when loss b/f partially offsets profit"
+
+@part part_number=3
+  part_name_en: "SPECIFIED TRANSACTIONS AND MATTERS"
+  part_name_zh: "特定交易及事项"
+  field_count: 11
+
+  @field field_id=3.1 box=5
+    name_en: "Intellectual property payments to non-resident"
+    name_zh: "向非居民支付知识产权费用"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: derived
+    source_keywords: ["royalty", "intellectual property", "licence fees"]
+    derivation_rule: "Yes IF Part_12_14 > 0 ELSE No"
+    trigger_field: 12.14
+
+  @field field_id=3.2 box=6
+    name_en: "Deemed assessable profits (s.20AE/20AF/20AX/20AY)"
+    name_zh: "应评税利润（第20AE/20AF/20AX/20AY条）"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: tax_computation
+    derivation_rule: "Yes IF Tax Computation mentions '20AE', '20AF', '20AX', '20AY' ELSE No"
+    default_value: "No"
+
+  @field field_id=3.3 box=7
+    name_en: "Short/medium term debt instruments (issued before 1 April 2018)"
+    name_zh: "短期/中期债务票据（2018年4月1日前发行）"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: tax_computation
+    derivation_rule: "Yes IF Tax Computation mentions debt instruments issued before 2018-04-01 ELSE No"
+    default_value: "No"
+
+  @field field_id=3.4 box=8
+    name_en: "Double taxation relief (s.49/49(1A))"
+    name_zh: "双重课税宽减（第49/49(1A)条）"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: tax_computation
+    derivation_rule: "Yes IF Tax Computation has 'foreign tax credit', 'double taxation relief', 'Section 49' ELSE No"
+    default_value: "No"
+
+  @field field_id=3.5 box=9
+    name_en: "Advance ruling obtained"
+    name_zh: "已取得事先裁定"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF FS or Director's Report mentions advance ruling application ELSE No"
+    default_value: "No"
+
+  @field field_id=3.6 box=10
+    name_en: "Bond issuer/originator (s.40AB/Schedule 17A)"
+    name_zh: "债券发行人/始创人（第40AB条/附表17A）"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF company is bond issuer or originator ELSE No"
+    default_value: "No"
+
+  @field field_id=3.7 box=11
+    name_en: "Deduction for regulatory capital security distribution"
+    name_zh: "规管资本证券分派扣除"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: tax_computation
+    derivation_rule: "Yes IF Tax Computation mentions regulatory capital security deduction ELSE No"
+    default_value: "No"
+
+  @field field_id=3.8 box=12
+    name_en: "Permanent establishment in Hong Kong of non-resident"
+    name_zh: "非香港居民的香港常设机构"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF FS or Director's Report indicates PE status ELSE No"
+    default_value: "No"
+
+  @field field_id=3.8.1 box=13
+    name_en: "Transactions with other parts of non-Hong Kong resident person"
+    name_zh: "与非香港居民人士其他部分的交易"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: derived
+    derivation_rule: "Yes IF 3.8=Yes AND has transactions ELSE No"
+    default_value: "No"
+
+  @field field_id=3.9 box=14
+    name_en: "Specified person under s.51AAB/Schedule 65 (electronic filing mandate)"
+    name_zh: "第51AAB条/附表65指明人士（电子报税强制规定）"
+    value_type: boolean
+    fill_rule: 'Tick "No" for 2024/25 or before'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Applicable for year of assessment 2025/26 and subsequent years only"
+
+  @field field_id=3.9.1 box=15
+    name_en: "Qualify for paper form filing (s.51AAC(3))"
+    name_zh: "符合纸本表格报税资格（第51AAC(3)条）"
+    value_type: boolean
+    fill_rule: 'Tick "No" for 2024/25 or before'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Applicable for year of assessment 2025/26 and subsequent years only"
+
+@part part_number=4
+  part_name_en: "DETAILS OF THE CORPORATION"
+  part_name_zh: "公司详情"
+  field_count: 4
+
+  @field field_id=4.1
+    name_en: "Postal address if different from that printed on this return"
+    name_zh: "如与本报税表上印载的地址不同，请填上通讯地址"
+    value_type: text
+    fill_rule: "Leave blank if same as printed"
+    required: false
+    source_preference: financial_statements
+    source_keywords: ["registered address", "principal place of business"]
+
+  @field field_id=4.2
+    name_en: "Telephone Number"
+    name_zh: "电话号码"
+    value_type: text
+    fill_rule: "Enter telephone number"
+    required: false
+    source_preference: manual
+
+  @field field_id=4.3a
+    name_en: "Principal business activity"
+    name_zh: "主要业务活动"
+    value_type: text
+    fill_rule: "Enter principal business activity description"
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["principal activity", "business activity"]
+
+  @field field_id=4.3b box=16
+    name_en: "Hong Kong Standard Industrial Classification Code"
+    name_zh: "香港标准行业分类编码"
+    value_type: text
+    fill_rule: "Enter 6-digit HSIC code"
+    required: true
+    source_preference: manual
+
+@part part_number=5
+  part_name_en: "RETURN FORM LANGUAGE"
+  part_name_zh: "报税表语文"
+  field_count: 1
+
+  @field field_id=5.1
+    name_en: "Receive future Profits Tax Returns in CHINESE"
+    name_zh: "日后以中文收取利得税报税表"
+    value_type: boolean
+    fill_rule: "Tick the box if wish to receive in Chinese"
+    required: false
+    source_preference: fixed
+    default_value: "No"
+
+@part part_number=6
+  part_name_en: "AUTHORIZED REPRESENTATIVE"
+  part_name_zh: "获授权代表"
+  field_count: 2
+  note: "Part 6 is entirely manual — LLM should NOT attempt to fill any values"
+
+  @field field_id=6.1
+    name_en: "Authorized representative name and address"
+    name_zh: "获授权代表姓名及地址"
+    value_type: text
+    fill_rule: "Complete only if representative appointed"
+    required: false
+    source_preference: manual
+
+  @field field_id=6.2
+    name_en: "Representative's Business Registration No."
+    name_zh: "获授权代表商业登记号码"
+    value_type: text
+    fill_rule: "Enter if applicable"
+    required: false
+    source_preference: manual
+
+@part part_number=7
+  part_name_en: "GENERAL MATTERS"
+  part_name_zh: "一般事项"
+  field_count: 25
+
+  @field field_id=7.1 box=17
+    name_en: "Are your accounts required to be audited by law?"
+    name_zh: "你的账目是否须依法审计？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "Yes"
+    reasoning: "Hong Kong incorporated limited companies are required by law to have audited accounts"
+
+  @field field_id=7.1.1 box=18
+    name_en: "Are your accounts audited by a Hong Kong practice unit?"
+    name_zh: "你的账目是否由香港执业单位审计？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF auditor signature block shows HK CPA firm ELSE No"
+
+  @field field_id=7.1.2 box=19
+    name_en: "Practising certificate number of the certified public accountant"
+    name_zh: "执业会计师的执业证书号码"
+    value_type: text
+    fill_rule: "Enter certificate number"
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["Practising Certificate No.", "CPA"]
+    derivation_rule: "Extract from auditor signature block"
+
+  @field field_id=7.2a
+    name_en: "Basis period from date"
+    name_zh: "评税基期起始日"
+    value_type: date
+    fill_rule: "Enter From date"
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["For the year ended", "Basis period", "31 March"]
+
+  @field field_id=7.2b
+    name_en: "Basis period to date"
+    name_zh: "评税基期结束日"
+    value_type: date
+    fill_rule: "Enter To date"
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["For the year ended", "Basis period", "31 March"]
+
+  @field field_id=7.2c box=20
+    name_en: "Is accounting date different from last year?"
+    name_zh: "本年度会计日期是否与上年度不同？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Same accounting period as prior year unless stated otherwise"
+
+  @field field_id=7.3a box=21
+    name_en: "Did you commence business within the basis period?"
+    name_zh: "你是否在评税基期内开始经营业务？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF first year of business indicated ELSE No"
+    default_value: "No"
+
+  @field field_id=7.3b
+    name_en: "Date of commencement"
+    name_zh: "开业日期"
+    value_type: date
+    fill_rule: "Enter date if 7.3a=Yes"
+    required: false
+    source_preference: manual
+    conditional_on: 7.3a
+
+  @field field_id=7.4 box=22
+    name_en: "Did you cease business within the basis period?"
+    name_zh: "你是否在评税基期内结束经营业务？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF winding up/cessation mentioned ELSE No"
+    default_value: "No"
+
+  @field field_id=7.4.1
+    name_en: "Date of cessation"
+    name_zh: "结束业务日期"
+    value_type: date
+    fill_rule: "Enter date if 7.4=Yes"
+    required: false
+    source_preference: manual
+    conditional_on: 7.4
+
+  @field field_id=7.4.2a box=23
+    name_en: "On cessation, was business transferred to another person?"
+    name_zh: "结束业务时，业务是否转让予另一人？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: false
+    source_preference: financial_statements
+    derivation_rule: "Yes IF cessation AND transfer mentioned ELSE No"
+    default_value: "No"
+    conditional_on: 7.4
+
+  @field field_id=7.4.2b
+    name_en: "Name of person business transferred to"
+    name_zh: "业务转让对象名称"
+    value_type: text
+    fill_rule: "Enter name if 7.4.2a=Yes"
+    required: false
+    source_preference: manual
+    conditional_on: 7.4.2a
+
+  @field field_id=7.4.3 box=24
+    name_en: "On cessation, were assets sold/transferred to an associated person?"
+    name_zh: "结束业务时，资产是否售予/转让予关联人士？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: false
+    source_preference: financial_statements
+    derivation_rule: "Yes IF cessation AND associated person transfer mentioned ELSE No"
+    default_value: "No"
+    conditional_on: 7.4
+
+  @field field_id=7.5 box=25
+    name_en: "Elect to align tax treatment of financial instruments with accounting treatment (s.18I-18L)?"
+    name_zh: "选择将财务工具的税务处理与会计处理一致（第18I至18L条）？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Unless explicitly elected"
+
+  @field field_id=7.6a box=26
+    name_en: "Are financial statements prepared in a foreign currency?"
+    name_zh: "财务报表是否以外国货币编制？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF FS prepared in non-HKD currency ELSE No"
+    default_value: "No"
+
+  @field field_id=7.6b
+    name_en: "Foreign currency used"
+    name_zh: "使用的外币币种"
+    value_type: text
+    fill_rule: "Enter currency if 7.6a=Yes"
+    required: false
+    source_preference: manual
+    conditional_on: 7.6a
+
+  @field field_id=7.6c
+    name_en: "Conversion rate to HK$"
+    name_zh: "港元换算率"
+    value_type: amount
+    fill_rule: "Enter conversion rate if 7.6a=Yes"
+    required: false
+    source_preference: manual
+    conditional_on: 7.6a
+
+  @field field_id=7.7 box=27
+    name_en: "Are you a private company?"
+    name_zh: "你是否为私人公司？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "Yes"
+    reasoning: "Most companies filing BIR51 are private companies"
+
+  @field field_id=7.7.1 box=28
+    name_en: "Has there been any change in your shareholders during the basis period?"
+    name_zh: "在评税基期内，股东是否有任何变动？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF Director's Report or notes mention share transfers/allotments ELSE No"
+    default_value: "No"
+
+  @field field_id=7.8 box=29
+    name_en: "Were you a party to an amalgamation under s.680 or 681 of the Companies Ordinance?"
+    name_zh: "你是否根据《公司条例》第680或681条参与合并？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF section 680/681 mentioned ELSE No"
+    default_value: "No"
+
+  @field field_id=7.9 box=30
+    name_en: "Were you involved in any processing arrangement in the Chinese Mainland?"
+    name_zh: "你是否参与中国内地的任何加工安排？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF FS mentions contract processing/import processing in Mainland ELSE No"
+    default_value: "No"
+
+  @field field_id=7.10 box=31
+    name_en: "Are you an insurance corporation commencing RBC regime?"
+    name_zh: "你是否为开始实施风险为本资本制度的保险公司？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF insurance company AND RBC regime mentioned ELSE No"
+    default_value: "No"
+
+  @field field_id=7.10.1 box=32
+    name_en: "RBC one-off adjustment - Income"
+    name_zh: "风险为本资本制度一次性调整 - 收入"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0"'
+    required: false
+    source_preference: manual
+    default_value: "0"
+    conditional_on: 7.10
+
+  @field field_id=7.10.1b box=33
+    name_en: "RBC one-off adjustment - Loss"
+    name_zh: "风险为本资本制度一次性调整 - 亏损"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0"'
+    required: false
+    source_preference: manual
+    default_value: "0"
+    conditional_on: 7.10
+
+  @field field_id=7.10.2 box=34
+    name_en: "Elect to spread RBC one-off adjustment over 5 years?"
+    name_zh: "选择将一次性调整分5年摊分？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: false
+    source_preference: manual
+    default_value: "No"
+    conditional_on: 7.10
+
+  @field field_id=7.11 box=35
+    name_en: "Are you a family-owned special purpose entity?"
+    name_zh: "你是否为家族投资控股工具的特殊目的实体？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF FS/notes indicate family-owned investment structure ELSE No"
+    default_value: "No"
+
+  @field field_id=7.12 box=36
+    name_en: "Are you an eligible single family office?"
+    name_zh: "你是否为合资格单一家族办公室？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF family office structure mentioned ELSE No"
+    default_value: "No"
+
+@part part_number=8
+  part_name_en: "TRANSACTIONS FOR / WITH NON-RESIDENTS"
+  part_name_zh: "与非居民人士的交易"
+  field_count: 5
+
+  @field field_id=8.1.1 box=37
+    name_en: "Sell goods or provide services in Hong Kong on behalf of a non-resident?"
+    name_zh: "是否代非居民人士在香港销售货品或提供服务？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF FS mentions agency for non-resident ELSE No"
+    default_value: "No"
+
+  @field field_id=8.1.2 box=38
+    name_en: "Receive income for non-resident person from Hong Kong trade/business?"
+    name_zh: "是否代非居民人士收取源自香港的贸易或业务收入？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF FS mentions agency income for non-resident ELSE No"
+    default_value: "No"
+
+  @field field_id=8.1.3 box=39
+    name_en: "Make value creation contributions in Hong Kong for non-resident IP?"
+    name_zh: "是否在香港为非居民的知识产权作出价值创造贡献？"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: financial_statements
+    derivation_rule: "Yes IF FS mentions IP development for non-resident ELSE No"
+    default_value: "No"
+
+  @field field_id=8.2 box=40
+    name_en: "Hire charges paid/accrued to non-residents for movable property in Hong Kong"
+    name_zh: "就香港动产的使用权支付给/应计给非居民人士的租用费"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["hire charges", "rental", "lease"]
+    default_value: "0"
+
+  @field field_id=8.3 box=41
+    name_en: "Fees paid/accrued to non-residents for professional services in Hong Kong"
+    name_zh: "就香港专业服务支付给/应计给非居民人士的费用"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["professional fees", "consultancy fees", "non-resident"]
+    default_value: "0"
+
+@part part_number=9
+  part_name_en: "DETAILS OF SUPPLEMENTARY FORM(S) UPLOADED"
+  part_name_zh: "已上传补充表格详情"
+  field_count: 22
+
+  @field field_id=9.1 box=42
+    name_en: "Form S1 - Person electing for two-tiered profits tax rates"
+    name_zh: "表格S1"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.2 box=43
+    name_en: "Form S2 - Transfer pricing and international tax obligations"
+    name_zh: "表格S2"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.3 box=44
+    name_en: "Form S3 - Expenditure on research & development"
+    name_zh: "表格S3"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.4 box=45
+    name_en: "Form S4 - Expenditure on energy efficient building installation"
+    name_zh: "表格S4"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.5 box=46
+    name_en: "Form S5 - Ship-owner"
+    name_zh: "表格S5"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.6 box=47
+    name_en: "Form S6 - Professional reinsurer"
+    name_zh: "表格S6"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.7 box=48
+    name_en: "Form S7 - Authorized captive insurer"
+    name_zh: "表格S7"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.8 box=49
+    name_en: "Form S8 - Qualifying corporate treasury centre"
+    name_zh: "表格S8"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.9 box=50
+    name_en: "Form S9 - Qualifying aircraft lessor"
+    name_zh: "表格S9"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.10 box=51
+    name_en: "Form S10 - Qualifying aircraft leasing manager"
+    name_zh: "表格S10"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.11 box=52
+    name_en: "Form S11 - Qualifying ship lessor"
+    name_zh: "表格S11"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.12 box=53
+    name_en: "Form S12 - Qualifying ship leasing manager"
+    name_zh: "表格S12"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.13 box=54
+    name_en: "Form S13 - Specified insurer"
+    name_zh: "表格S13"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.14 box=55
+    name_en: "Form S14 - Licensed insurance broker company"
+    name_zh: "表格S14"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.15 box=56
+    name_en: "Form S15 - Persons deriving eligible carried interest"
+    name_zh: "表格S15"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.16 box=57
+    name_en: "Form S16 - Qualifying ship agent"
+    name_zh: "表格S16"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.17 box=58
+    name_en: "Form S17 - Qualifying ship manager"
+    name_zh: "表格S17"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.18 box=59
+    name_en: "Form S18 - Qualifying ship broker"
+    name_zh: "表格S18"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.19 box=60
+    name_en: "Form S19 - Taxation on specified foreign-sourced income"
+    name_zh: "表格S19"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.20 box=61
+    name_en: "Form S20 - Tax concessions for family-owned investment holding vehicle"
+    name_zh: "表格S20"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.21 box=62
+    name_en: "Form S21 - Tax certainty enhancement scheme for onshore gain on disposal of equity interests"
+    name_zh: "表格S21"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+  @field field_id=9.22 box=63
+    name_en: "Form S22 - Tax concessions for intellectual property income"
+    name_zh: "表格S22"
+    value_type: boolean
+    fill_rule: 'Tick "Yes" or "No"'
+    required: true
+    source_preference: fixed
+    fixed_value: "No"
+    reasoning: "Per company rule, supplementary forms are not applicable"
+    company_rule: "No"
+
+@part part_number=10
+  part_name_en: "TAX DATA"
+  part_name_zh: "税务数据"
+  field_count: 34
+
+  @field field_id=10.1 box=64
+    name_en: "Offshore profits excluded from Assessable Profits or Adjusted Loss"
+    name_zh: "离岸利润（从应评税利润或经调整亏损中剔除）"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["Offshore profits", "Exempt offshore profits"]
+    default_value: "0"
+
+  @field field_id=10.2
+    name_en: "Offshore profits from business (already included in Item 10.1) attributable to:"
+    name_zh: "离岸业务利润（已计入第10.1项）归因于："
+    value_type: label
+    fill_rule: "Label only — no value entry required"
+    required: false
+    source_preference: fixed
+    fixed_value: null
+
+  @field field_id=10.2.1 box=65
+    name_en: "Use of the Internet to accept orders, sell goods, provide services or accept payment"
+    name_zh: "使用互联网接受订单、销售货品、提供服务或接受付款"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: manual
+    default_value: "0"
+
+  @field field_id=10.2.2 box=66
+    name_en: "Contract processing or import processing arrangement in the Chinese Mainland"
+    name_zh: "中国内地的加工安排或进口加工安排"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: manual
+    default_value: "0"
+
+  @field field_id=10.3 box=67
+    name_en: "Profits from sale of landed properties in Hong Kong excluded"
+    name_zh: "出售香港物业所得利润（已剔除）"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["sale of landed properties", "property disposal"]
+    default_value: "0"
+
+  @field field_id=10.4 box=68
+    name_en: "Profits from sale of capital assets (other than landed properties) excluded"
+    name_zh: "出售资本资产（物业除外）所得利润（已剔除）"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["capital assets", "sale of assets"]
+    default_value: "0"
+
+  @field field_id=10.5 box=69
+    name_en: "Net interest income exempted from payment of Profits Tax"
+    name_zh: "获豁免缴付利得税的利息收入净额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["interest income exempted", "exempt interest"]
+    default_value: "0"
+
+  @field field_id=10.6 box=70
+    name_en: "Interest/profits/gains from qualifying debt instruments (issued on or after 1 April 2018)"
+    name_zh: "合资格债务票据（2018年4月1日或之后发行）的利息/利润/收益"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["qualifying debt instruments"]
+    default_value: "0"
+
+  @field field_id=10.7 box=71
+    name_en: "Profits from transactions in assets specified in Schedule 16C"
+    name_zh: "附表16C指明资产交易所得利润"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["Schedule 16C"]
+    default_value: "0"
+
+  @field field_id=10.8 box=72
+    name_en: "Profits from transactions in relation to specified securities"
+    name_zh: "指明证券交易所得利润"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["specified securities"]
+    default_value: "0"
+
+  @field field_id=10.9 box=73
+    name_en: "Profits earned by family-owned SPV chargeable at concessionary tax rate"
+    name_zh: "家族投资控股工具的特殊目的实体按特惠税率征税的利润"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    default_value: "0"
+
+  @field field_id=10.10 box=74
+    name_en: "Deduction claimed for approved charitable donations"
+    name_zh: "认可慈善捐款扣除额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["charitable donations", "donations"]
+    default_value: "0"
+
+  @field field_id=10.11 box=75
+    name_en: "Deduction claimed for expenditure on building refurbishment"
+    name_zh: "楼宇翻新支出扣除额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["building refurbishment", "renovation", "refurbishment"]
+    default_value: "0"
+
+  @field field_id=10.12 box=76
+    name_en: "Deduction claimed for expenditure on computer hardware and software"
+    name_zh: "电脑硬件及软件支出扣除额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["computer expense", "computer hardware", "computer software", "IT equipment", "IT expenditure"]
+    default_value: "0"
+
+  @field field_id=10.13 box=77
+    name_en: "Deduction claimed for expenditure on prescribed manufacturing machinery or plant"
+    name_zh: "订明制造机械或工业装置支出扣除额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["manufacturing machinery", "plant and machinery", "machinery"]
+    default_value: "0"
+
+  @field field_id=10.14 box=78
+    name_en: "Deduction claimed for expenditure on environmental protection machinery"
+    name_zh: "环保机械支出扣除额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["environmental protection machinery", "environmental", "environmental protection"]
+    default_value: "0"
+
+  @field field_id=10.15 box=79
+    name_en: "Deduction claimed for expenditure on environmental protection installation"
+    name_zh: "环保设施支出扣除额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["environmental protection installation", "environmental installation"]
+    default_value: "0"
+
+  @field field_id=10.16 box=80
+    name_en: "Deduction claimed for expenditure on environment-friendly vehicles"
+    name_zh: "环保车辆支出扣除额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["environment-friendly vehicles", "electric vehicles", "motor vehicle expense"]
+    default_value: "0"
+
+  @field field_id=10.17
+    name_en: "Deduction claimed for expenditure on:"
+    name_zh: "申索扣除以下开支："
+    value_type: label
+    fill_rule: "Label only — no value entry required"
+    required: false
+    source_preference: fixed
+    fixed_value: null
+
+  @field field_id=10.17.1 box=81
+    name_en: "Patent rights"
+    name_zh: "专利权"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["patent rights", "patents"]
+    default_value: "0"
+
+  @field field_id=10.17.2 box=82
+    name_en: "Rights to know-how"
+    name_zh: "技术知识权利"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["know-how", "technical know-how"]
+    default_value: "0"
+
+  @field field_id=10.18
+    name_en: "Deduction claimed for specified expenditure on:"
+    name_zh: "申索扣除以下指明开支："
+    value_type: label
+    fill_rule: "Label only — no value entry required"
+    required: false
+    source_preference: fixed
+    fixed_value: null
+
+  @field field_id=10.18.1 box=83
+    name_en: "Copyrights"
+    name_zh: "版权"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["copyrights"]
+    default_value: "0"
+
+  @field field_id=10.18.2 box=84
+    name_en: "Performer's economic rights"
+    name_zh: "表演者的经济权利"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    default_value: "0"
+
+  @field field_id=10.18.3 box=85
+    name_en: "Protected layout-design (topography) rights"
+    name_zh: "受保护布图设计（拓朴图）权利"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    default_value: "0"
+
+  @field field_id=10.18.4 box=86
+    name_en: "Protected plant variety rights"
+    name_zh: "受保护植物品种权利"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    default_value: "0"
+
+  @field field_id=10.18.5 box=87
+    name_en: "Registered designs"
+    name_zh: "注册外观设计"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    default_value: "0"
+
+  @field field_id=10.18.6 box=88
+    name_en: "Registered trade marks"
+    name_zh: "注册商标"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    default_value: "0"
+
+  @field field_id=10.19
+    name_en: "Tax relief claimed pursuant to an arrangement stated in Item 3.4:"
+    name_zh: "根据第3.4项所述安排申索的税务宽减："
+    value_type: label
+    fill_rule: "Label only — no value entry required"
+    required: false
+    source_preference: fixed
+    fixed_value: null
+
+  @field field_id=10.19.1 box=89
+    name_en: "Foreign tax paid claimed as a tax credit"
+    name_zh: "已缴外国税款作为税收抵免申索"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["foreign tax paid", "tax credit"]
+    default_value: "0"
+
+  @field field_id=10.19.2 box=90
+    name_en: "Income or profits excluded from the Assessable Profits or Adjusted Loss stated in Part 1"
+    name_zh: "从第1部分所述应评税利润或经调整亏损中剔除的收入或利润"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    default_value: "0"
+
+  @field field_id=10.20 box=91
+    name_en: "Foreign tax paid claimed as unilateral tax credit"
+    name_zh: "已缴外国税款作为单方面税收抵免申索"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["unilateral tax credit"]
+    default_value: "0"
+
+  @field field_id=10.21 box=92
+    name_en: "Deduction claimed for interest to non-Hong Kong associated corporations"
+    name_zh: "支付给非香港关联公司的利息扣除额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["interest to associated corporations", "intra-group financing"]
+    default_value: "0"
+
+  @field field_id=10.22 box=93
+    name_en: "Deduction claimed for leased premises reinstatement costs"
+    name_zh: "租赁物业复原成本扣除额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["reinstatement costs", "lease restoration"]
+    default_value: "0"
+
+@part part_number=11
+  part_name_en: "DEPRECIATION ALLOWANCES CLAIMED"
+  part_name_zh: "已申索折旧免税额"
+  field_count: 11
+
+  @field field_id=11.1 box=94
+    name_en: "Industrial Building - Initial Allowance"
+    name_zh: "工业楼宇 - 初期免税额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    @taxcomp_mapping
+      asset_type: "industrial_building"
+      allowance_type: "initial"
+    default_value: "0"
+
+  @field field_id=11.2 box=95
+    name_en: "Industrial Building - Annual Allowance"
+    name_zh: "工业楼宇 - 每年免税额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    @taxcomp_mapping
+      asset_type: "industrial_building"
+      allowance_type: "annual"
+    default_value: "0"
+
+  @field field_id=11.3 box=96
+    name_en: "Industrial Building - Balancing Allowance"
+    name_zh: "工业楼宇 - 结余免税额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    @taxcomp_mapping
+      asset_type: "industrial_building"
+      allowance_type: "balancing"
+    default_value: "0"
+
+  @field field_id=11.4 box=97
+    name_en: "Industrial Building - Balancing Charge"
+    name_zh: "工业楼宇 - 结余课税"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    @taxcomp_mapping
+      asset_type: "industrial_building"
+      allowance_type: "balancing_charge"
+    default_value: "0"
+
+  @field field_id=11.5 box=98
+    name_en: "Commercial Building - Annual Allowance"
+    name_zh: "商业楼宇 - 每年免税额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    @taxcomp_mapping
+      asset_type: "commercial_building"
+      allowance_type: "annual"
+    default_value: "0"
+
+  @field field_id=11.6 box=99
+    name_en: "Commercial Building - Balancing Allowance"
+    name_zh: "商业楼宇 - 结余免税额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    @taxcomp_mapping
+      asset_type: "commercial_building"
+      allowance_type: "balancing"
+    default_value: "0"
+
+  @field field_id=11.7 box=100
+    name_en: "Commercial Building - Balancing Charge"
+    name_zh: "商业楼宇 - 结余课税"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    @taxcomp_mapping
+      asset_type: "commercial_building"
+      allowance_type: "balancing_charge"
+    default_value: "0"
+
+  @field field_id=11.8 box=101
+    name_en: "Machinery or Plant - Initial Allowance"
+    name_zh: "机械或工业装置 - 初期免税额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    @taxcomp_mapping
+      asset_type: "machinery|plant"
+      allowance_type: "initial"
+    default_value: "0"
+
+  @field field_id=11.9 box=102
+    name_en: "Machinery or Plant - Annual Allowance"
+    name_zh: "机械或工业装置 - 每年免税额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    @taxcomp_mapping
+      asset_type: "machinery|plant"
+      allowance_type: "annual"
+    default_value: "0"
+
+  @field field_id=11.10 box=103
+    name_en: "Machinery or Plant - Balancing Allowance"
+    name_zh: "机械或工业装置 - 结余免税额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    @taxcomp_mapping
+      asset_type: "machinery|plant"
+      allowance_type: "balancing"
+    default_value: "0"
+
+  @field field_id=11.11 box=104
+    name_en: "Machinery or Plant - Balancing Charge"
+    name_zh: "机械或工业装置 - 结余课税"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    @taxcomp_mapping
+      asset_type: "machinery|plant"
+      allowance_type: "balancing_charge"
+    default_value: "0"
+
+@part part_number=12
+  part_name_en: "FINANCIAL DATA"
+  part_name_zh: "财务数据"
+  field_count: 23
+
+  @field field_id=12.1 box=105
+    name_en: "Gross income"
+    name_zh: "总收入"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: derived
+    @decision_tree
+      description: "Gross income = Total of all revenue and income items (Revenue + Other revenue + Other income)"
+      step: "In the FS Notes, find the note about Revenue. Look for the subtotal or total row that sums ALL revenue and income items listed."
+      step: "This row often has label: null or role: subtotal — that's the gross income total. Use its value."
+      step: "If no subtotal row found, calculate: Gross income = Revenue + Other revenue/income items from the Income Statement or Revenue Note."
+      step: "Fallback: try label matching for 'gross income', 'gross revenue', 'total revenue'."
+    default_value: "0"
+
+  @field field_id=12.2 box=106
+    name_en: "Turnover"
+    name_zh: "营业额"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["turnover", "revenue", "sales"]
+    default_value: "0"
+
+  @field field_id=12.3 box=107
+    name_en: "Opening inventories"
+    name_zh: "期初存货"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["opening inventories", "opening stock"]
+    default_value: "0"
+
+  @field field_id=12.5 box=109
+    name_en: "Closing inventories"
+    name_zh: "期末存货"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["closing inventories", "closing stock"]
+    default_value: "0"
+
+  @field field_id=12.4 box=108
+    name_en: "Purchases"
+    name_zh: "采购"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: derived
+    @decision_tree
+      description: "Purchases = Closing inventories - Opening inventories + Purchases-related items from Cost of sales"
+      step: "In TaxComp Schedule 1, look under Cost of sales. Identify the item(s) that represent raw material / goods purchases — these are typically labeled 'Materials', 'Purchases', 'Cost of goods purchased', 'Raw materials', etc."
+      step: "Exclude items that are service/labor costs (e.g. 'Subcontractor fee', 'Labor', 'Processing fee') — those are NOT purchases."
+      step: "Use your accounting judgment to distinguish purchases from service costs."
+      step: "Purchases = Closing_inventories(12.5) - Opening_inventories(12.3) + Purchases_items_amount"
+      step: "Fallback: try FS label 'purchases' or 'cost of purchases'"
+      step: "If still not found, 0 + manual_review"
+    default_value: "0"
+
+  @field field_id=12.6 box=110
+    name_en: "Gross profit"
+    name_zh: "毛利"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: derived
+    @decision_tree
+      description: "Gross profit = Turnover(12.2) - Purchases items from TaxComp Cost of sales"
+      step: "In TaxComp Schedule 1, under Cost of sales, find items that are raw material/goods purchases (keywords: 'Materials', 'Purchases', 'goods'). Do NOT include service costs like subcontractor."
+      step: "Gross profit = Box_12.2(Turnover) - Sum_of_purchases_items"
+      step: "CRITICAL: This formula ALWAYS applies. Even if the FS Income Statement shows a 'Gross profit' line with a different number, IGNORE IT. The FS Gross profit includes subcontractor/service costs which are NOT purchases. The tax return definition is narrower."
+    default_value: "0"
+    mutually_exclusive_with: [12.7]
+
+  @field field_id=12.7 box=111
+    name_en: "Gross loss"
+    name_zh: "毛损"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["gross loss"]
+    default_value: "0"
+    mutually_exclusive_with: [12.6]
+
+  @field field_id=12.8 box=112
+    name_en: "Dividend income"
+    name_zh: "股息收入"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["dividend income", "dividends received"]
+    default_value: "0"
+
+  @field field_id=12.9 box=113
+    name_en: "Interest income"
+    name_zh: "利息收入"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["interest income", "bank interest", "deposit interest"]
+    default_value: "0"
+
+  @field field_id=12.10 box=114
+    name_en: "Interest expense"
+    name_zh: "利息支出"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["interest expense", "finance costs", "bank interest expense"]
+    default_value: "0"
+
+  @field field_id=12.11 box=115
+    name_en: "Employee and director remuneration"
+    name_zh: "雇员及董事薪酬"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: derived
+    @decision_tree
+      description: "Employee & director remuneration = Director's remuneration + Salaries/Staff costs from TaxComp Schedule 1"
+      step: "In TaxComp Schedule 1, find 'Director's remuneration' (or 'Directors' remuneration') — extract its amount."
+      step: "Also search for 'Salaries' — extract its amount if found."
+      step: "Total = Director's_remuneration_amount + Salaries_amount (if salaries found, else just Director's remuneration)"
+      step: "ONLY include items explicitly labeled 'Director's remuneration' or 'Salaries'. Do NOT include 'Staff welfare', 'medical', 'pension', 'bonus', or other employee benefits — those are NOT remuneration for this box."
+      step: "Fallback: use FS keywords 'staff costs', 'employee benefits', 'salaries', 'directors' emoluments'"
+      step: "If nothing found, 0 + manual_review"
+    default_value: "0"
+
+  @field field_id=12.12 box=116
+    name_en: "Share-based payments"
+    name_zh: "以股份为基础的付款"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["share-based payments", "equity-settled share-based payments"]
+    default_value: "0"
+
+  @field field_id=12.13 box=117
+    name_en: "Commission payments"
+    name_zh: "佣金支出"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["commission", "brokerage"]
+    default_value: "0"
+
+  @field field_id=12.14 box=118
+    name_en: "Intellectual property payments"
+    name_zh: "知识产权付款"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["royalty", "intellectual property", "licence fees"]
+    default_value: "0"
+
+  @field field_id=12.15 box=119
+    name_en: "Management and consultancy fee payments"
+    name_zh: "管理及顾问费付款"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["management fee", "consultancy fee", "professional fees"]
+    default_value: "0"
+
+  @field field_id=12.16 box=120
+    name_en: "Contractor and subcontractor charges"
+    name_zh: "承办商及分包商费用"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["contractor", "subcontractor", "outsourcing"]
+    default_value: "0"
+
+  @field field_id=12.17 box=121
+    name_en: "Bad debts"
+    name_zh: "坏账"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["bad debts", "impairment loss", "trade receivables impairment"]
+    default_value: "0"
+
+  @field field_id=12.18 box=122
+    name_en: "Net profit per account"
+    name_zh: "账面上净利润"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: derived
+    @decision_tree
+      description: "Net profit per account = 'Profit for the year' from Tax Computation Schedule 1"
+      step: "In TaxComp Schedule 1 (Detailed Income Statement), find the @row with label 'Profit for the year' — this is the net profit per account. Use its value from the HK$ column."
+      step: "This is the accounting profit BEFORE tax adjustments shown in the tax computation. Do NOT use the FS Income Statement's 'Profit for the year' (which may be after tax). The tax return wants the Schedule 1 figure."
+      step: "If 'Profit for the year' not found in TaxComp, try 'net profit', then FS keywords as fallback."
+      step: "If nothing found, 0 + manual_review"
+    default_value: "0"
+    mutually_exclusive_with: [12.19]
+
+  @field field_id=12.19 box=123
+    name_en: "Net loss per account"
+    name_zh: "账面上净亏损"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["loss for the year", "net loss"]
+    default_value: "0"
+    mutually_exclusive_with: [12.18]
+
+  @field field_id=12.20 box=124
+    name_en: "Accounts receivable (trade)"
+    name_zh: "应收账款（贸易）"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: tax_computation
+    source_keywords: ["trade receivables", "accounts receivable", "debtors"]
+    default_value: "0"
+
+  @field field_id=12.21 box=125
+    name_en: "Accounts payable (trade)"
+    name_zh: "应付账款（贸易）"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["trade payables", "accounts payable", "creditors"]
+    default_value: "0"
+
+  @field field_id=12.22 box=126
+    name_en: "Issued share capital"
+    name_zh: "已发行股份股本"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["issued share capital", "share capital"]
+    default_value: "0"
+    validation_rules: ["must_equal_fs_share_capital"]
+
+  @field field_id=12.23 box=127
+    name_en: "Total value of assets"
+    name_zh: "资产总值"
+    value_type: amount
+    fill_rule: 'If NIL, enter "0". Exclude cents.'
+    required: true
+    source_preference: financial_statements
+    source_keywords: ["total assets"]
+    default_value: "0"
+    validation_rules: ["must_equal_fs_total_assets"]
+
+@part part_number=13
+  part_name_en: "DECLARATION"
+  part_name_zh: "声明"
+  field_count: 2
+
+  @field field_id=13.1 box=128
+    name_en: "Declaration by Secretary / Manager / Director / Investment Manager / Liquidator"
+    name_zh: "由秘书/经理/董事/投资经理/清盘人作出的声明"
+    value_type: text
+    fill_rule: "Enter full name, designation and sign"
+    required: true
+    source_preference: manual
+    reasoning: "Must be signed by authorized person - manual entry required"
+
+  @field field_id=13.2 box=129
+    name_en: "Declaration by Service Provider (if applicable)"
+    name_zh: "由服务提供者作出的声明（如适用）"
+    value_type: text
+    fill_rule: "Enter full name, designation and sign if Service Provider engaged"
+    required: false
+    source_preference: manual
+    reasoning: "Only applicable if Service Provider is engaged to furnish this return"
+
+@cross_validations
+  @validation rule_id=V1
+    description: "Part 1.1 must equal Tax Computation Assessable Profit"
+    severity: ERROR
+    check: "Part_1_1 == taxcomp.assessable_profit"
+    failure_action: "validation_status: fail, needs_manual_review: true"
+
+  @validation rule_id=V2
+    description: "Part 1.1 and 1.2 mutual exclusion"
+    severity: ERROR
+    check: "NOT (Part_1_1 > 0 AND Part_1_2 > 0)"
+    failure_action: "validation_status: fail"
+
+  @validation rule_id=V3
+    description: "Part 12.6 and 12.7 mutual exclusion"
+    severity: ERROR
+    check: "NOT (Part_12_6 > 0 AND Part_12_7 > 0)"
+    failure_action: "validation_status: fail"
+
+  @validation rule_id=V4
+    description: "Part 12.18 and 12.19 mutual exclusion"
+    severity: ERROR
+    check: "NOT (Part_12_18 > 0 AND Part_12_19 > 0)"
+    failure_action: "validation_status: fail"
+
+  @validation rule_id=V5
+    description: "Part 12.22 must equal FS Issued share capital"
+    severity: ERROR
+    check: "Part_12_22 == fs.issued_share_capital"
+    failure_action: "validation_status: fail"
+
+  @validation rule_id=V6
+    description: "Part 12.23 must equal FS Total assets"
+    severity: ERROR
+    check: "Part_12_23 == fs.total_assets"
+    failure_action: "validation_status: fail"
+
+  @validation rule_id=V7
+    description: "Part 11 total allowances approximately equal Tax Comp depreciation adjustment"
+    severity: WARNING
+    check: "ABS(SUM(Part_11_all_allowances) - taxcomp.total_depreciation) < tolerance"
+    failure_action: "validation_status: warning"
+
+  @validation rule_id=V8
+    description: "All amount fields must have a value (0 if NIL, never null)"
+    severity: ERROR
+    check: "ALL amount_fields != null AND amount_fields != ''"
+    failure_action: "validation_status: fail"
+
+  @validation rule_id=V9
+    description: "Part 12.6 Gross profit consistency check (Gross income - Purchases + Opening - Closing ≈ Gross profit/loss)"
+    severity: WARNING
+    check: "ABS((Part_12_1 OR Part_12_2) - Part_12_4 + Part_12_3 - Part_12_5 - (Part_12_6 OR Part_12_7)) < tolerance"
+    failure_action: "validation_status: warning"
+    note: "Gross income and Turnover definitions may differ; this is advisory only"
