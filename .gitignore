@@ -19,6 +19,9 @@ uploads/
 # 邮件去重
 processed_emails.json
 
+# 共享数据库（部署时从本地 scp 上传）
+shared_db/
+
 # 前端
 frontend/node_modules/
 frontend/dist/

@@ -31,22 +31,21 @@ sudo npm install -g pm2
 ## 步骤 1：创建目录和拉代码
 
 ```bash
-# 假设部署到 /opt/
 sudo mkdir -p /opt/audit-platform /opt/admin-dashboard /opt/shared_db
 sudo chown -R $USER:$USER /opt/audit-platform /opt/admin-dashboard /opt/shared_db
 
-# 拉代码（用你的 Git 仓库地址替换）
+# 拉代码
 cd /opt
-git clone <你的仓库地址> audit-platform-tmp
-git clone <你的仓库地址> admin-dashboard-tmp
+git clone https://github.com/zerocean/audit-platform.git audit-platform-tmp
+git clone https://github.com/zerocean/audit-admin-dashboard.git admin-dashboard-tmp
 
-# 组织目录结构
-# shared_db 放在顶层，两个项目各放子目录
-cp -r /opt/shared_db_tmp/* /opt/shared_db/
-cp -r /opt/audit-platform-tmp/* /opt/audit-platform/
-cp -r /opt/admin-dashboard-tmp/* /opt/admin-dashboard/
+# 如果已经 clone 到了别的位置，直接 mv 即可
+mv /opt/audit-platform-tmp /opt/audit-platform 2>/dev/null
+mv /opt/admin-dashboard-tmp /opt/admin-dashboard 2>/dev/null
 
-rm -rf /opt/audit-platform-tmp /opt/admin-dashboard-tmp /opt/shared_db_tmp
+# shared_db 不在 Git 仓库里，从本地 Windows 上传
+# 在 Windows PowerShell 执行：
+#   scp -r D:\Demo\shared_db\* root@你的服务器IP:/opt/shared_db/
 ```
 
 最终目录：
@@ -91,12 +90,23 @@ sudo -u postgres psql
 在 psql 里逐行执行（`*** 换成你的密码）：
 
 ```sql
+-- 1. 创建一个只能本地登录的数据库用户
 CREATE USER audit_user WITH PASSWORD 'mys...';
+
+-- 2. 创建数据库，owner 设为这个用户
 CREATE DATABASE audit_platform OWNER audit_user;
+
+-- 3. 给用户在数据库级别全部权限（建表、读写等）
 GRANT ALL PRIVILEGES ON DATABASE audit_platform TO audit_user;
+
+-- 4. 切换到新数据库
 \c audit_platform
+
+-- 5. PostgreSQL 15+ 需要额外授权 public schema（否则建表报权限错误）
 GRANT ALL ON SCHEMA public TO audit_user;
 GRANT CREATE ON SCHEMA public TO audit_user;
+
+-- 退出
 \q
 ```
 
@@ -189,7 +199,7 @@ pip install fastapi uvicorn sqlalchemy python-jose passlib bcrypt \
 python3 -c "
 import sys; sys.path.insert(0, '/opt')
 from shared_db import Base
-print('shared_db OK')
+print('shared_db OK')"
 ```
 
 ### 5.2 admin-dashboard
@@ -203,7 +213,7 @@ pip install fastapi uvicorn sqlalchemy python-jose passlib bcrypt \
 python3 -c "
 import sys; sys.path.insert(0, '/opt')
 from shared_db import Base
-print('shared_db OK')
+print('shared_db OK')"
 ```
 
 ---
@@ -339,9 +349,9 @@ pm2 logs email-worker --lines 10
 
 ```bash
 # 只开放需要的端口
+sudo ufw allow 22     # SSH（别把自己锁外面）
 sudo ufw allow 8767   # audit-platform（后端+前端）
 sudo ufw allow 5004   # admin-dashboard 后端
-sudo ufw allow 5173   # admin-dashboard 前端（如果不用 Nginx）
 sudo ufw enable
 sudo ufw status
 ```
