@@ -8,31 +8,99 @@ type Step = 'idle' | 'parsing' | 'parsed' | 'auditing' | 'done'
 type Tab = 'raw' | 'table' | 'inspector'
 
 function parseMarkdownTable(md: string): { html: string; rows: string[][] } {
-  const rawLines = md.split('\n'); const merged: string[] = []
-  for (const line of rawLines) {
-    const t = line.trim(); if (!t) continue
-    if (t.startsWith('|')) merged.push(t)
-    else if (merged.length > 0) merged[merged.length - 1] += ' ' + t
+  // Normalize: join fragmented lines intelligently
+  const rawLines = md.split('\n').map(l => l.trim()).filter(Boolean)
+  if (rawLines.length < 2) return { html: '', rows: [] }
+
+  // Find separator line (|---|...) to split header from data
+  const sepIdx = rawLines.findIndex(l => /^\|[-:\s|]+\|?$/.test(l))
+  if (sepIdx < 1) {
+    // Fallback: old merge-by-pipe-start logic
+    const merged: string[] = []
+    for (const line of rawLines) {
+      if (line.startsWith('|')) merged.push(line)
+      else if (merged.length > 0) merged[merged.length - 1] += ' ' + line
+    }
+    const tableLines = merged.filter(l => l.includes('|'))
+    if (tableLines.length < 2) return { html: '', rows: [] }
+    const sepFallback = tableLines.findIndex(l => /^\|[-:\s|]+\|?$/.test(l))
+    return parseRows(tableLines, sepFallback >= 0 ? sepFallback : 0)
   }
-  const tableLines = merged.filter(l => l.includes('|'))
-  if (tableLines.length < 2) return { html: '', rows: [] }
-  const headers = tableLines[0].split('|').map(s => s.trim()).filter(Boolean)
+
+  // Header = all lines before separator, joined
+  const headerJoined = rawLines.slice(0, sepIdx).join(' ')
+  const headerCells = headerJoined.split('|').map(s => s.trim()).filter(Boolean)
+  const colCount = headerCells.length
+  if (colCount < 2) return { html: '', rows: [] }
+
+  // Data lines after separator — merge fragments until pipe count >= colCount
+  const dataLines = rawLines.slice(sepIdx + 1)
   const dataRows: string[][] = []
+  let cur = ''
+  for (const line of dataLines) {
+    cur = cur ? cur + ' ' + line.replace(/^\|/, '') : line
+    const pipes = (cur.match(/\|/g) || []).length
+    if (pipes >= colCount) {
+      const cells = cur.split('|').map(s => s.trim()).filter(Boolean)
+      while (cells.length < colCount) cells.push('')
+      dataRows.push(cells.slice(0, colCount))
+      cur = ''
+    }
+  }
+  if (cur) {
+    const cells = cur.split('|').map(s => s.trim()).filter(Boolean)
+    while (cells.length < colCount) cells.push('')
+    dataRows.push(cells.slice(0, colCount))
+  }
+
+  // Build HTML
   let html = '<table class="data-table"><thead><tr>'
-  headers.forEach(h => { html += `<th>${escHtml(h)}</th>` })
+  headerCells.forEach(h => { html += `<th>${escHtml(h)}</th>` })
   html += '</tr></thead><tbody>'
-  for (let i = 2; i < tableLines.length; i++) {
-    const cells = tableLines[i].split('|').map(s => s.trim()).filter(Boolean)
-    if (cells.length === 0) continue
-    dataRows.push(cells)
+  dataRows.forEach(cells => {
     html += '<tr>'
     cells.forEach((cell, ci) => {
       html += ci === 0 ? `<td>${tagify(cell)}</td>` : `<td>${escHtml(cell)}</td>`
     })
     html += '</tr>'
-  }
+  })
   html += '</tbody></table>'
   return { html, rows: dataRows }
+
+  function parseRows(lines: string[], sepI: number) {
+    const headerCells = lines.slice(0, sepI).join(' ').split('|').map(s => s.trim()).filter(Boolean)
+    const colCount = headerCells.length
+    const dataLines = lines.slice(sepI + 1)
+    const rows: string[][] = []
+    let cur = ''
+    for (const line of dataLines) {
+      cur = cur ? cur + ' ' + line.replace(/^\|/, '') : line
+      const pipes = (cur.match(/\|/g) || []).length
+      if (pipes >= colCount) {
+        const cells = cur.split('|').map(s => s.trim()).filter(Boolean)
+        while (cells.length < colCount) cells.push('')
+        rows.push(cells.slice(0, colCount))
+        cur = ''
+      }
+    }
+    if (cur) {
+      const cells = cur.split('|').map(s => s.trim()).filter(Boolean)
+      while (cells.length < colCount) cells.push('')
+      rows.push(cells.slice(0, colCount))
+    }
+    let html = '<table class="data-table"><thead><tr>'
+    headerCells.forEach(h => { html += `<th>${escHtml(h)}</th>` })
+    html += '</tr></thead><tbody>'
+    rows.forEach(cells => {
+      html += '<tr>'
+      cells.forEach((cell, ci) => {
+        html += ci === 0 ? `<td>${tagify(cell)}</td>` : `<td>${escHtml(cell)}</td>`
+      })
+      html += '</tr>'
+    })
+    html += '</tbody></table>'
+    return { html, rows }
+  }
 }
 function escHtml(s: string) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
 function tagify(type: string) {
@@ -52,7 +120,7 @@ export default function AuditToolPage() {
   const [statusMsg, setStatusMsg] = useState('就绪')
   const [file, setFile] = useState<File | null>(null)
   const [parserResult, setParserResult] = useState<AuditPdfResponse | null>(null)
-  const [inspectorResult, setInspectorResult] = useState<InspectorResult | null>(null)
+  const [inspectorResult, setInspectorResult] = useState<InspectorResponse | null>(null)
   const [auditText, setAuditText] = useState('')
   const [auditTableHtml, setAuditTableHtml] = useState('')
   const [auditTableRows, setAuditTableRows] = useState<string[][]>([])
@@ -213,8 +281,8 @@ th{background:#f2f2f2}pre{background:#f8f8f8;padding:8pt;font-size:9pt;white-spa
 <h2>一、语法/结构性分析</h2>`
     if (inspectorResult?.issues?.length) {
       html += '<table><tr><th>页码</th><th>类别</th><th>位置</th><th>问题描述</th></tr>'
-      inspectorResult.issues.forEach(i => {
-        const p = i.split('|').map(s => s.trim())
+      inspectorResult.issues.forEach((i: string) => {
+        const p = i.split('|').map((s: string) => s.trim())
         html += `<tr><td>${escHtml(p[0]||'')}</td><td>${escHtml(p[1]||'')}</td><td>${escHtml(p[2]||'')}</td><td>${escHtml(p[3]||i)}</td></tr>`
       })
       html += '</table>'
@@ -228,7 +296,7 @@ th{background:#f2f2f2}pre{background:#f8f8f8;padding:8pt;font-size:9pt;white-spa
     else html += '<p>暂无</p>'
     html += '</body></html>'
     const blob = new Blob(['\ufeff' + html], { type: 'application/msword' })
-    const base = file?.name?.replace(/\.[^/.]+$/, '') || '审计分析报告'
+    const base = (file?.name || taskFilename || '审计分析报告').replace(/\.[^/.]+$/, '')
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = `${base}_review.doc`
     a.click(); URL.revokeObjectURL(url)
@@ -342,8 +410,8 @@ th{background:#f2f2f2}pre{background:#f8f8f8;padding:8pt;font-size:9pt;white-spa
                   <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
                     检查页数: {inspectorResult.total_pages} | 发现问题: {inspectorResult.total_issues}</div>
                   <table className="data-table"><thead><tr><th>页码</th><th>类别</th><th>位置</th><th>问题描述</th></tr></thead><tbody>
-                    {inspectorResult.issues.map((issue, i) => {
-                      const parts = issue.split('|').map(s => s.trim())
+                    {inspectorResult.issues.map((issue: string, i: number) => {
+                      const parts = issue.split('|').map((s: string) => s.trim())
                       return <tr key={i}><td>{parts[0]||'-'}</td><td>{parts[1]||'-'}</td><td>{parts[2]||'-'}</td><td>{parts[3]||issue}</td></tr>
                     })}
                   </tbody></table></div>
