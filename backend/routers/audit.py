@@ -139,7 +139,7 @@ async def _audit_sse_with_save(req: AuditJSONReq):
                 if matches:
                     existing["audit_table"] = matches[-1][1].strip()
                 task.result_json = json.dumps(existing, ensure_ascii=False)
-                task.status = "success"
+                task.status = "audited"  # audit LLM done, inspector may still be running
                 if usage_data:
                     llm_tokens = usage_data.get("total_tokens", 0)
                     llm_input = usage_data.get("prompt_tokens", 0)
@@ -163,8 +163,17 @@ async def _audit_sse_with_save(req: AuditJSONReq):
                             total_cost=llm_cost,
                         )
                         db.add(step)
-                task.completed_at = datetime.now(timezone.utc)
                 db.commit()
+                # Check if inspector already finished — if so, mark fully complete
+                insp_done = db.query(TaskStep).filter(
+                    TaskStep.task_id == task.id,
+                    TaskStep.step_type == "inspector",
+                    TaskStep.status == "success",
+                ).first()
+                if insp_done:
+                    task.status = "success"
+                    task.completed_at = datetime.now(timezone.utc)
+                    db.commit()
         finally:
             db.close()
 
@@ -188,7 +197,7 @@ async def audit_json_sync(req: AuditJSONReq, user=Depends(get_current_user)):
                 if matches:
                     existing["audit_table"] = matches[-1][1].strip()
                 task.result_json = json.dumps(existing, ensure_ascii=False)
-                task.status = "success"
+                task.status = "audited"  # sync path: audit done, inspector may follow separately
                 if usage:
                     llm_tokens = usage.get("total_tokens", 0)
                     llm_input = usage.get("prompt_tokens", 0)
@@ -268,6 +277,13 @@ async def audit_inspector(
                 }
                 task.result_json = json.dumps(existing, ensure_ascii=False)
                 db.commit()
+
+                # If audit LLM already finished (status="audited"), mark task complete
+                task = db.query(Task).filter(Task.id == task.id).first()  # refresh
+                if task and task.status == "audited":
+                    task.status = "success"
+                    task.completed_at = datetime.now(timezone.utc)
+                    db.commit()
 
         return {"success": True, "total_pages": result.get("total_pages", 0),
                 "total_issues": result.get("total_issues", 0),

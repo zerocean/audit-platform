@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useCallback } from 'react'
 export interface ActiveTask {
   id: number
   tool_type: 'audit' | 'taxfill'
-  status: 'running' | 'success' | 'failed'
+  status: 'running' | 'success' | 'failed' | 'audited'
   input_filename?: string
   sseReader?: ReadableStreamDefaultReader<Uint8Array>
 }

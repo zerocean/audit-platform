@@ -133,6 +133,7 @@ export default function AuditToolPage() {
   const [taskId, setTaskId] = useState<number | null>(null)
   const [taskFilename, setTaskFilename] = useState('')
   const sseRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
+  const auditDoneRef = useRef(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const rawOutputRef = useRef<HTMLDivElement>(null)
@@ -165,6 +166,8 @@ export default function AuditToolPage() {
       }
       if (data.status === 'success') {
         setStep('done'); setStatusMsg('✅ 已完成'); setParseDone(true); setAuditDone(true); setInspectorDone(true)
+      } else if (data.status === 'audited') {
+        setStep('auditing'); setStatusMsg('🔄 复核完成，Inspector 运行中'); setParseDone(true); setAuditDone(true)
       } else if (data.status === 'running') {
         setStep('auditing'); setStatusMsg('🔄 运行中'); setParseDone(true)
       } else if (data.status === 'failed') {
@@ -182,6 +185,7 @@ export default function AuditToolPage() {
     setParserResult(null); setInspectorResult(null); setAuditText('')
     setAuditTableHtml(''); setAuditTableRows([]); setError('')
     setParseDone(false); setAuditDone(false); setInspectorDone(false); setTaskId(null)
+    auditDoneRef.current = false
     if (sseRef.current) { try { sseRef.current.cancel() } catch {} }
     setStatusMsg(`已选择: ${f.name}`)
   }
@@ -206,9 +210,9 @@ export default function AuditToolPage() {
     try {
       const data = await api.auditInspector(file, taskId ?? undefined)
       setInspectorResult(data); setInspectorDone(true)
-      // Save to task
       if (taskId) {
         api.saveInspector(taskId, data).catch(() => {})
+        if (auditDoneRef.current) addTask({ id: taskId, tool_type: 'audit', status: 'success' })
       }
     } catch (e: any) { console.error('Inspector:', e) }
     finally { setInspectorRunning(false) }
@@ -235,9 +239,10 @@ export default function AuditToolPage() {
             }
             return p
           })
-          setAuditDone(true); setStep('done'); setStatusMsg('✅ 数值复核完成')
+          setAuditDone(true); auditDoneRef.current = true
+          setStep('done'); setStatusMsg('✅ 数值复核完成')
           if (taskId) {
-            addTask({ id: taskId, tool_type: 'audit', status: 'success' })
+            addTask({ id: taskId, tool_type: 'audit', status: 'audited' })
           }
         },
         (err) => {
