@@ -38,7 +38,11 @@ async def run_taxfill_pipeline(fs_pdf_path: str, taxcomp_pdf_path: str) -> dict:
     # Parse token usage from stdout
     token_usage = 0
     vision_tokens = 0
+    vision_input = 0
+    vision_output = 0
     filling_tokens = 0
+    filling_input = 0
+    filling_output = 0
     import re as _re
     m = _re.search(r'\[TOKEN_USAGE\] ({.*?})', proc.stdout)
     if m:
@@ -46,7 +50,11 @@ async def run_taxfill_pipeline(fs_pdf_path: str, taxcomp_pdf_path: str) -> dict:
             data = json.loads(m.group(1))
             token_usage = data.get('total_tokens', 0)
             vision_tokens = data.get('vision_tokens', 0)
+            vision_input = data.get('vision_input', 0)
+            vision_output = data.get('vision_output', 0)
             filling_tokens = data.get('filling_tokens', 0)
+            filling_input = data.get('filling_input', 0)
+            filling_output = data.get('filling_output', 0)
         except Exception: pass
 
     # 查找最新的日志目录
@@ -64,7 +72,8 @@ async def run_taxfill_pipeline(fs_pdf_path: str, taxcomp_pdf_path: str) -> dict:
     filling_dir = os.path.join(log_dir, "filling")
 
     result = {"run_id": run_id, "token_usage": token_usage,
-              "vision_tokens": vision_tokens, "filling_tokens": filling_tokens}
+              "vision_tokens": vision_tokens, "vision_input": vision_input, "vision_output": vision_output,
+              "filling_tokens": filling_tokens, "filling_input": filling_input, "filling_output": filling_output}
     for name in ["fs_parsed.ton", "taxcomp_parsed.ton"]:
         p = os.path.join(log_dir, "fs" if name.startswith("fs") else "taxcomp", name)
         if os.path.exists(p): result["fs_ton_path" if name.startswith("fs") else "taxcomp_ton_path"] = p

@@ -18,10 +18,12 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-// Load .env
+// Load .env (try script dir first, then /opt/.env)
 const dotenvPath = path.join(__dirname, '.env');
-if (fs.existsSync(dotenvPath)) {
-  require('dotenv').config({ path: dotenvPath });
+const globalEnvPath = '/opt/.env';
+const envPath = fs.existsSync(dotenvPath) ? dotenvPath : (fs.existsSync(globalEnvPath) ? globalEnvPath : null);
+if (envPath) {
+  require('dotenv').config({ path: envPath });
 }
 
 // ── Config ────────────────────────────────────────────
@@ -39,7 +41,8 @@ const PROCESSED_DB = path.join(__dirname, 'processed_emails.json');
 const IMAP_CONFIG = {
   user: EMAIL_USER, password: EMAIL_PASSWORD,
   host: 'imap.163.com', port: 993, tls: true,
-  tlsOptions: { rejectUnauthorized: false }, keepalive: true
+  tlsOptions: { rejectUnauthorized: false }, keepalive: true,
+  id: { name: 'AuditEmailWorker', version: '2.0.0', vendor: 'audit-platform', 'support-email': EMAIL_USER }
 };
 
 const SMTP_CONFIG = {
@@ -374,7 +377,10 @@ function fetchAndProcess() {
   const imap = new Imap(IMAP_CONFIG);
 
   imap.once('ready', () => {
-    imap.openBox('INBOX', false, (err) => {
+    // 163 requires IMAP ID command before openBox
+    imap.id({ name: 'AuditEmailWorker', version: '2.0.0', vendor: 'audit-platform', 'support-email': EMAIL_USER }, (idErr) => {
+      if (idErr) log('IMAP', `ID command: ${idErr.message}`);
+      imap.openBox('INBOX', false, (err) => {
       if (err) { imap.end(); return; }
       imap.search(['UNSEEN'], (err2, results) => {
         if (err2 || !results?.length) { log('IMAP', err2 ? `Error: ${err2.message}` : 'No new mail'); imap.end(); return; }
@@ -409,6 +415,8 @@ function fetchAndProcess() {
       });
     });
   });
+  });  // close ready callback
+
   imap.once('error', err => log('IMAP', `Connection: ${err.message}`));
   imap.once('end', () => { log('IMAP', 'Disconnected'); isProcessing = false; });
   imap.connect();

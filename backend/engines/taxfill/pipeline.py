@@ -55,9 +55,15 @@ def main():
     # Parse vision parser token usage from its stdout
     import re as _re, json as _json
     vision_tokens = 0
+    vision_input = 0
+    vision_output = 0
     vm = _re.search(r'\[TOKEN_USAGE\] ({.*?})', result.stdout)
     if vm:
-        try: vision_tokens = _json.loads(vm.group(1)).get('total_tokens', 0)
+        try:
+            data = _json.loads(vm.group(1))
+            vision_tokens = data.get('total_tokens', 0)
+            vision_input = data.get('input_tokens', 0)
+            vision_output = data.get('output_tokens', 0)
         except Exception: pass
 
     # ========== Stage 2: Filling Engine ==========
@@ -89,9 +95,15 @@ def main():
 
     # Parse filling engine token usage
     filling_tokens = 0
+    filling_input = 0
+    filling_output = 0
     fm = _re.search(r'\[TOKEN_USAGE\] ({.*?})', result.stdout)
     if fm:
-        try: filling_tokens = _json.loads(fm.group(1)).get('total_tokens', 0)
+        try:
+            data = _json.loads(fm.group(1))
+            filling_tokens = data.get('total_tokens', 0)
+            filling_input = data.get('input_tokens', 0)
+            filling_output = data.get('output_tokens', 0)
         except Exception: pass
 
     # ========== Done ==========
@@ -109,7 +121,7 @@ def main():
     # Aggregate token usage
     import json as _json2
     total = vision_tokens + filling_tokens
-    print(f"\n[TOKEN_USAGE] {_json2.dumps({'vision_tokens': vision_tokens, 'filling_tokens': filling_tokens, 'total_tokens': total})}")
+    print(f"\n[TOKEN_USAGE] {_json2.dumps({'vision_tokens': vision_tokens, 'vision_input': vision_input, 'vision_output': vision_output, 'filling_tokens': filling_tokens, 'filling_input': filling_input, 'filling_output': filling_output, 'total_tokens': total})}")
 
 
 if __name__ == "__main__":

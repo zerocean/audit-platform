@@ -691,15 +691,20 @@ def main():
 
     # Report own token usage
     total_tokens = 0
+    input_tokens = 0
+    output_tokens = 0
     import glob as _g, json as _j
     for api_file in _g.glob(os.path.join(RUN_DIR, "**", "*_api.json"), recursive=True):
         try:
             with open(api_file) as f:
                 data = _j.load(f)
-            total_tokens += data.get("usage", {}).get("total_tokens", 0)
+            usage = data.get("usage", {})
+            total_tokens += usage.get("total_tokens", 0)
+            input_tokens += usage.get("prompt_tokens", 0)
+            output_tokens += usage.get("completion_tokens", 0)
         except Exception:
             pass
-    print(f"\n[TOKEN_USAGE] {_j.dumps({'stage': 'vision_parser', 'total_tokens': total_tokens})}")
+    print(f"\n[TOKEN_USAGE] {_j.dumps({'stage': 'vision_parser', 'total_tokens': total_tokens, 'input_tokens': input_tokens, 'output_tokens': output_tokens})}")
 
 
 if __name__ == "__main__":

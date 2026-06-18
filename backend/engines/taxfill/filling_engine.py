@@ -774,14 +774,19 @@ def main():
         # Report own token usage
         api_path = os.path.join(run_dir, "filling_api_response.json")
         total_tokens = 0
+        input_tokens = 0
+        output_tokens = 0
         if os.path.exists(api_path):
             try:
                 with open(api_path) as f:
                     data = json.load(f)
-                total_tokens = data.get("usage", {}).get("total_tokens", 0)
+                usage = data.get("usage", {})
+                total_tokens = usage.get("total_tokens", 0)
+                input_tokens = usage.get("prompt_tokens", 0)
+                output_tokens = usage.get("completion_tokens", 0)
             except Exception:
                 pass
-        print(f"\n[TOKEN_USAGE] {json.dumps({'stage': 'filling_engine', 'total_tokens': total_tokens})}")
+        print(f"\n[TOKEN_USAGE] {json.dumps({'stage': 'filling_engine', 'total_tokens': total_tokens, 'input_tokens': input_tokens, 'output_tokens': output_tokens})}")
     else:
         print(f"\n[ERROR] Could not parse filling reference TON. Check raw output at:")
         print(f"  {os.path.join(run_dir, 'filling_reference_raw.ton')}")

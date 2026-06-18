@@ -93,27 +93,33 @@ async def taxfill_pipeline(
             task.total_tokens = result["token_usage"]
             ensure_model_pricing("dashscope", "qwen3.6-flash")
             ensure_model_pricing("dashscope", "deepseek-v4-flash")
-            # Create TaskSteps with exact per-model token counts
+            # Create TaskSteps with per-model input/output token counts
             vis_tokens = result.get("vision_tokens", 0)
+            vis_input = result.get("vision_input", 0) or vis_tokens
+            vis_output = result.get("vision_output", 0)
             fill_tokens = result.get("filling_tokens", 0)
+            fill_input = result.get("filling_input", 0)
+            fill_output = result.get("filling_output", 0) or fill_tokens
+            # Fallback: if no split data, estimate conservatively
             if not vis_tokens and not fill_tokens:
                 vis_tokens = int(task.total_tokens * 0.2)
                 fill_tokens = task.total_tokens - vis_tokens
-            # Vision models are input-heavy (image tokens), filling is output-heavy
-            vin, vout, vis_cost = compute_task_cost(vis_tokens, 0, "dashscope", "qwen3.6-flash")
-            fin, fout, fill_cost = compute_task_cost(0, fill_tokens, "dashscope", "deepseek-v4-flash")
+                vis_input = vis_tokens
+                fill_output = fill_tokens
+            vin, vout, vis_cost = compute_task_cost(vis_input, vis_output, "dashscope", "qwen3.6-flash")
+            fin, fout, fill_cost = compute_task_cost(fill_input, fill_output, "dashscope", "deepseek-v4-flash")
             task.total_cost = vis_cost + fill_cost
             steps = []
             if vis_tokens:
                 steps.append(TaskStep(task_id=task.id, step_type="vision_parser", status="success",
                          model_name="qwen3.6-flash", model_provider="dashscope",
-                         total_tokens=vis_tokens, input_tokens=vis_tokens, output_tokens=0,
+                         total_tokens=vis_tokens, input_tokens=vis_input, output_tokens=vis_output,
                          input_cost=vin, output_cost=vout, total_cost=vis_cost))
             if fill_tokens:
                 steps.append(TaskStep(task_id=task.id, step_type="filling_engine", status="success",
                          model_name="deepseek-v4-flash", model_provider="dashscope",
-                         total_tokens=fill_tokens, output_tokens=fill_tokens, input_tokens=0,
-                         output_cost=fout, input_cost=fin, total_cost=fill_cost))
+                         total_tokens=fill_tokens, input_tokens=fill_input, output_tokens=fill_output,
+                         input_cost=fin, output_cost=fout, total_cost=fill_cost))
             if steps:
                 db.add_all(steps)
         task.result_json = json.dumps({
