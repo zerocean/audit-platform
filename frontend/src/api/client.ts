@@ -67,8 +67,9 @@ export const api = {
     const fd = new FormData(); fd.append('file', file)
     return request<AuditPdfResponse>('/audit/pdf', { method: 'POST', body: fd })
   },
-  auditInspector: (file: File) => {
+  auditInspector: (file: File, taskId?: number) => {
     const fd = new FormData(); fd.append('file', file)
+    if (taskId) fd.append('task_id', String(taskId))
     return request<InspectorResponse>('/audit/inspector', { method: 'POST', body: fd })
   },
   taxfillPipeline: (fsPdf: File, taxcompPdf: File) => {

@@ -204,7 +204,7 @@ export default function AuditToolPage() {
     if (!file) return
     setInspectorRunning(true); setInspectorDone(false)
     try {
-      const data = await api.auditInspector(file)
+      const data = await api.auditInspector(file, taskId ?? undefined)
       setInspectorResult(data); setInspectorDone(true)
       // Save to task
       if (taskId) {

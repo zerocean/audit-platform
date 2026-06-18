@@ -390,12 +390,17 @@ def inspect_pdf(pdf_path, output_file):
 
     # Step 3: Aggregate tokens, then save final output
     total_tokens = 0
+    input_tokens = 0
+    output_tokens = 0
     import glob as _glob
     for api_file in _glob.glob(os.path.join(run_dir, "inspect_*_api.json")):
         try:
             with open(api_file) as f:
                 data = json.load(f)
-            total_tokens += data.get("usage", {}).get("total_tokens", 0)
+            usage = data.get("usage", {})
+            total_tokens += usage.get("total_tokens", 0)
+            input_tokens += usage.get("prompt_tokens", 0)
+            output_tokens += usage.get("completion_tokens", 0)
         except Exception:
             pass
 
@@ -409,7 +414,11 @@ def inspect_pdf(pdf_path, output_file):
         "error": "; ".join(batch_errors) if batch_errors else None,
         "total_issues": len(all_issues),
         "issues": all_issues,
-        "_token_usage": total_tokens,
+        "_token_usage": {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens,
+        },
     }
 
     with open(output_file, 'w', encoding='utf-8') as f:

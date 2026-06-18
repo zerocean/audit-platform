@@ -93,26 +93,27 @@ async def taxfill_pipeline(
             task.total_tokens = result["token_usage"]
             ensure_model_pricing("dashscope", "qwen3.6-flash")
             ensure_model_pricing("dashscope", "deepseek-v4-flash")
-            task.total_cost = compute_task_cost(task.total_tokens, "dashscope", "deepseek-v4-flash")
             # Create TaskSteps with exact per-model token counts
             vis_tokens = result.get("vision_tokens", 0)
             fill_tokens = result.get("filling_tokens", 0)
             if not vis_tokens and not fill_tokens:
                 vis_tokens = int(task.total_tokens * 0.2)
                 fill_tokens = task.total_tokens - vis_tokens
-            vis_cost = compute_task_cost(vis_tokens, "dashscope", "qwen3.6-flash") if vis_tokens else 0
-            fill_cost = float(task.total_cost) - vis_cost if fill_tokens else float(task.total_cost)
+            # Vision models are input-heavy (image tokens), filling is output-heavy
+            vin, vout, vis_cost = compute_task_cost(vis_tokens, 0, "dashscope", "qwen3.6-flash")
+            fin, fout, fill_cost = compute_task_cost(0, fill_tokens, "dashscope", "deepseek-v4-flash")
+            task.total_cost = vis_cost + fill_cost
             steps = []
             if vis_tokens:
                 steps.append(TaskStep(task_id=task.id, step_type="vision_parser", status="success",
                          model_name="qwen3.6-flash", model_provider="dashscope",
                          total_tokens=vis_tokens, input_tokens=vis_tokens, output_tokens=0,
-                         input_cost=vis_cost, output_cost=0, total_cost=vis_cost))
+                         input_cost=vin, output_cost=vout, total_cost=vis_cost))
             if fill_tokens:
                 steps.append(TaskStep(task_id=task.id, step_type="filling_engine", status="success",
                          model_name="deepseek-v4-flash", model_provider="dashscope",
                          total_tokens=fill_tokens, output_tokens=fill_tokens, input_tokens=0,
-                         output_cost=fill_cost, input_cost=0, total_cost=fill_cost))
+                         output_cost=fout, input_cost=fin, total_cost=fill_cost))
             if steps:
                 db.add_all(steps)
         task.result_json = json.dumps({

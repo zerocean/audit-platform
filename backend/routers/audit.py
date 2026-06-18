@@ -64,18 +64,20 @@ async def audit_pdf(file: UploadFile = File(...),
         result = await run_vision_parser(input_path)
         data = result["data"]
         vis_tokens = result.get("token_usage", 0)
+        vis_input = result.get("token_input", vis_tokens)
+        vis_output = result.get("token_output", 0)
         vis_model = result.get("model") or VISION_MODEL
 
         if TRACKING_ENABLED:
             ensure_model_pricing("dashscope", vis_model)
-            vis_cost = compute_task_cost(vis_tokens, "dashscope", vis_model)
+            in_cost, out_cost, vis_cost = compute_task_cost(vis_input, vis_output, "dashscope", vis_model)
             task.total_tokens = vis_tokens
             task.total_cost = vis_cost
             db.add(TaskStep(
                 task_id=task.id, step_type="vision_parser", status="success",
                 model_name=vis_model, model_provider="dashscope",
-                total_tokens=vis_tokens, input_tokens=vis_tokens, output_tokens=0,
-                input_cost=vis_cost, output_cost=0, total_cost=vis_cost,
+                total_tokens=vis_tokens, input_tokens=vis_input, output_tokens=vis_output,
+                input_cost=in_cost, output_cost=out_cost, total_cost=vis_cost,
             ))
             db.commit()
 
@@ -140,10 +142,12 @@ async def _audit_sse_with_save(req: AuditJSONReq):
                 task.status = "success"
                 if usage_data:
                     llm_tokens = usage_data.get("total_tokens", 0)
+                    llm_input = usage_data.get("prompt_tokens", 0)
+                    llm_output = usage_data.get("completion_tokens", 0)
                     if TRACKING_ENABLED:
                         task.total_tokens = (task.total_tokens or 0) + llm_tokens
                         ensure_model_pricing("dashscope", AUDIT_MODEL)
-                        llm_cost = compute_task_cost(llm_tokens, "dashscope", AUDIT_MODEL)
+                        in_cost, out_cost, llm_cost = compute_task_cost(llm_input, llm_output, "dashscope", AUDIT_MODEL)
                         task.total_cost = float(task.total_cost or 0) + llm_cost
                         step = TaskStep(
                             task_id=task.id,
@@ -152,10 +156,10 @@ async def _audit_sse_with_save(req: AuditJSONReq):
                             model_name=AUDIT_MODEL,
                             model_provider="dashscope",
                             total_tokens=llm_tokens,
-                            input_tokens=usage_data.get("prompt_tokens", 0),
-                            output_tokens=usage_data.get("completion_tokens", 0),
-                            input_cost=0,
-                            output_cost=llm_cost,
+                            input_tokens=llm_input,
+                            output_tokens=llm_output,
+                            input_cost=in_cost,
+                            output_cost=out_cost,
                             total_cost=llm_cost,
                         )
                         db.add(step)
@@ -187,17 +191,19 @@ async def audit_json_sync(req: AuditJSONReq, user=Depends(get_current_user)):
                 task.status = "success"
                 if usage:
                     llm_tokens = usage.get("total_tokens", 0)
+                    llm_input = usage.get("prompt_tokens", 0)
+                    llm_output = usage.get("completion_tokens", 0)
                     task.total_tokens = (task.total_tokens or 0) + llm_tokens
                     ensure_model_pricing("dashscope", AUDIT_MODEL)
-                    llm_cost = compute_task_cost(llm_tokens, "dashscope", AUDIT_MODEL)
+                    in_cost, out_cost, llm_cost = compute_task_cost(llm_input, llm_output, "dashscope", AUDIT_MODEL)
                     task.total_cost = float(task.total_cost or 0) + llm_cost
                     db.add(TaskStep(
                         task_id=task.id, step_type="audit_llm", status="success",
                         model_name=AUDIT_MODEL, model_provider="dashscope",
                         total_tokens=llm_tokens,
-                        input_tokens=usage.get("prompt_tokens", 0),
-                        output_tokens=usage.get("completion_tokens", 0),
-                        input_cost=0, output_cost=llm_cost, total_cost=llm_cost,
+                        input_tokens=llm_input,
+                        output_tokens=llm_output,
+                        input_cost=in_cost, output_cost=out_cost, total_cost=llm_cost,
                     ))
                 task.completed_at = datetime.now(timezone.utc)
                 db.commit()
@@ -232,6 +238,8 @@ async def audit_inspector(
 
         result = await run_inspector(input_path)
         insp_tokens = result.get("token_usage", 0)
+        insp_input = result.get("_token_input", insp_tokens)
+        insp_output = result.get("_token_output", 0)
         insp_model = result.get("_model") or result.get("model") or INSPECTOR_MODEL
 
         # Save TaskStep if task_id provided
@@ -239,14 +247,14 @@ async def audit_inspector(
             task = db.query(Task).filter(Task.id == task_id).first()
             if task and TRACKING_ENABLED:
                 ensure_model_pricing("dashscope", insp_model)
-                insp_cost = compute_task_cost(insp_tokens, "dashscope", insp_model)
+                in_cost, out_cost, insp_cost = compute_task_cost(insp_input, insp_output, "dashscope", insp_model)
                 task.total_tokens = (task.total_tokens or 0) + insp_tokens
                 task.total_cost = float(task.total_cost or 0) + insp_cost
                 db.add(TaskStep(
                     task_id=task.id, step_type="inspector", status="success",
                     model_name=insp_model, model_provider="dashscope",
-                    total_tokens=insp_tokens, input_tokens=insp_tokens, output_tokens=0,
-                    input_cost=insp_cost, output_cost=0, total_cost=insp_cost,
+                    total_tokens=insp_tokens, input_tokens=insp_input, output_tokens=insp_output,
+                    input_cost=in_cost, output_cost=out_cost, total_cost=insp_cost,
                 ))
                 # Merge inspector results into result_json
                 existing = {}

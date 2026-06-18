@@ -34,11 +34,20 @@ async def run_vision_parser(pdf_path: str, output_path: str = None) -> dict:
     data = json.loads(raw)
 
     # Extract token usage from output JSON
-    token_usage = data.pop("_token_usage", 0)
+    token_raw = data.pop("_token_usage", 0)
+    if isinstance(token_raw, dict):
+        token_usage = token_raw.get("total_tokens", 0)
+        token_input = token_raw.get("input_tokens", 0)
+        token_output = token_raw.get("output_tokens", 0)
+    else:
+        token_usage = token_raw
+        token_input = token_raw  # legacy: was single int, treat as input
+        token_output = 0
     actual_model = data.pop("_model", None)
 
     return {"data": data, "raw": raw, "output_path": output_path,
-            "token_usage": token_usage, "model": actual_model}
+            "token_usage": token_usage, "token_input": token_input, "token_output": token_output,
+            "model": actual_model}
 
 
 async def run_inspector(pdf_path: str, output_path: str = None) -> dict:
@@ -68,9 +77,16 @@ async def run_inspector(pdf_path: str, output_path: str = None) -> dict:
     with open(output_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     
-    data["_token_usage"] = data.get("_token_usage", 0)
-    token_usage = data.pop("_token_usage", 0)
-    data["token_usage"] = token_usage
+    # Extract token usage (could be int legacy or dict with input/output split)
+    token_raw = data.pop("_token_usage", 0)
+    if isinstance(token_raw, dict):
+        data["token_usage"] = token_raw.get("total_tokens", 0)
+        data["_token_input"] = token_raw.get("input_tokens", 0)
+        data["_token_output"] = token_raw.get("output_tokens", 0)
+    else:
+        data["token_usage"] = token_raw
+        data["_token_input"] = token_raw
+        data["_token_output"] = 0
     data["_model"] = data.get("model", INSPECTOR_MODEL)
 
     try: os.unlink(output_path)
