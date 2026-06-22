@@ -86,7 +86,6 @@ async def audit_pdf(file: UploadFile = File(...),
             "parsed_json": data, "pages": len(data.get("pages", [])),
             "uploaded_file": file.filename,
         }, ensure_ascii=False)
-        task.completed_at = datetime.now(timezone.utc)
         db.commit()
 
         return {
