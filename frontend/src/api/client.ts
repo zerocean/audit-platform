@@ -13,6 +13,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers['Content-Type'] = 'application/json'
   }
   const res = await fetch(`${BASE}${path}`, { ...options, headers })
+  if (res.status === 401) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    window.location.href = '/login'
+    throw new Error('登录已过期，请重新登录')
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
     throw new Error(err.detail || err.error || `HTTP ${res.status}`)
