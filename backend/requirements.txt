@@ -10,3 +10,5 @@ pandas
 openpyxl
 psycopg2-binary
 python-multipart
+oss2
+httpx

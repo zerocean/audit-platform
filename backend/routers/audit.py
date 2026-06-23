@@ -2,7 +2,7 @@
 import os, json, uuid, tempfile, shutil, re
 from datetime import datetime, timezone
 from fastapi import APIRouter, UploadFile, File, Depends, Form
-from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from database import get_db, SessionLocal
@@ -40,16 +40,18 @@ async def audit_pdf(file: UploadFile = File(...),
                 input_filename=file.filename, status="running", source=task_source)
     db.add(task); db.commit(); db.refresh(task)
 
-    # Save uploaded file persistently
+    # Save uploaded file — OSS or local
+    from services.oss import upload_or_local
     upload_dir = os.path.join(OUTPUTS_DIR, "uploads", str(task.id))
     os.makedirs(upload_dir, exist_ok=True)
     uploaded_path = os.path.join(upload_dir, file.filename)
     with open(uploaded_path, "wb") as f: f.write(content)
+    oss_url = upload_or_local(uploaded_path, "audit", task.id, file.filename)
 
     # Record file in TaskFile for admin-dashboard
     if TRACKING_ENABLED:
         db.add(TaskFile(task_id=task.id, file_type="input", file_name=file.filename,
-                         file_size=len(content), oss_url=uploaded_path))
+                         file_size=len(content), oss_url=oss_url))
         db.commit()
 
     run_id = uuid.uuid4().hex[:12]
@@ -297,18 +299,27 @@ async def audit_inspector(
 
 @router.get("/download-upload/{task_id}")
 async def audit_download_upload(task_id: int):
-    """Download the uploaded PDF for an audit task"""
+    """Download the uploaded PDF for an audit task (OSS or local)"""
+    from services.oss import OSS_ENABLED, get_presigned_url
     db = SessionLocal()
     try:
         task = db.query(Task).filter(Task.id == task_id).first()
         if not task or task.tool_type != "audit":
             return JSONResponse({"success": False, "error": "任务不存在"}, status_code=404)
 
+        # Try TaskFile first (has OSS url)
+        tf = db.query(TaskFile).filter(TaskFile.task_id == task_id, TaskFile.file_type == "input").first()
+        if tf and tf.oss_url:
+            if OSS_ENABLED and tf.oss_url.startswith("oss://"):
+                return RedirectResponse(url=get_presigned_url(tf.oss_url))
+            elif os.path.exists(tf.oss_url):
+                return FileResponse(tf.oss_url, filename=tf.file_name)
+
+        # Fallback: check result_json for uploaded_file
         result = {}
         if task.result_json:
             try: result = json.loads(task.result_json)
             except Exception: pass
-
         filename = result.get("uploaded_file")
         if not filename:
             return JSONResponse({"success": False, "error": "无上传文件"}, status_code=404)

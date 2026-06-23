@@ -58,13 +58,18 @@ async def taxfill_pipeline(
         shutil.copy2(fs_path, fs_uploaded)
         shutil.copy2(taxcomp_path, taxcomp_uploaded)
 
+        # Upload to OSS
+        from services.oss import upload_or_local
+        fs_oss = upload_or_local(fs_uploaded, "taxfill", task.id, fs_name)
+        tc_oss = upload_or_local(taxcomp_uploaded, "taxfill", task.id, taxcomp_name)
+
         # Record uploaded files in TaskFile for admin-dashboard
         if TRACKING_ENABLED:
             db.add_all([
                 TaskFile(task_id=task.id, file_type="input", file_name=fs_name,
-                         file_size=len(fs_content), oss_url=fs_uploaded),
+                         file_size=len(fs_content), oss_url=fs_oss),
                 TaskFile(task_id=task.id, file_type="input", file_name=taxcomp_name,
-                         file_size=len(taxcomp_content), oss_url=taxcomp_uploaded),
+                         file_size=len(taxcomp_content), oss_url=tc_oss),
             ])
             db.commit()
 
@@ -135,13 +140,15 @@ async def taxfill_pipeline(
             excel_path = result.get("excel_path")
             json_path = result.get("json_path")
             if excel_path and os.path.exists(excel_path):
+                oss_excel = upload_or_local(excel_path, "taxfill", task.id, "filling_reference.xlsx")
                 output_files.append(TaskFile(task_id=task.id, file_type="output",
                     file_name="filling_reference.xlsx",
-                    file_size=os.path.getsize(excel_path), oss_url=excel_path))
+                    file_size=os.path.getsize(excel_path), oss_url=oss_excel))
             if json_path and os.path.exists(json_path):
+                oss_json = upload_or_local(json_path, "taxfill", task.id, "filling_reference.json")
                 output_files.append(TaskFile(task_id=task.id, file_type="output",
                     file_name="filling_reference.json",
-                    file_size=os.path.getsize(json_path), oss_url=json_path))
+                    file_size=os.path.getsize(json_path), oss_url=oss_json))
             if output_files:
                 db.add_all(output_files)
 

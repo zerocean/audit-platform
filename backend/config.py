@@ -31,6 +31,14 @@ TRACKING_ENABLED = os.getenv("ENV", "").lower() == "production"
 # -- Internal API Key (供 email_worker 等内部服务调用)
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "audit-platform-internal-key-change-me")
 
+# -- OSS 对象存储 --
+OSS_ENABLED = bool(os.getenv("OSS_ACCESS_KEY_ID") and os.getenv("OSS_ACCESS_KEY_SECRET"))
+OSS_ACCESS_KEY_ID = os.getenv("OSS_ACCESS_KEY_ID", "")
+OSS_ACCESS_KEY_SECRET = os.getenv("OSS_ACCESS_KEY_SECRET", "")
+OSS_ENDPOINT = os.getenv("OSS_ENDPOINT", "oss-cn-shenzhen.aliyuncs.com")
+OSS_BUCKET = os.getenv("OSS_BUCKET", "audit-ha-bucket")
+OSS_PREFIX = os.getenv("OSS_PREFIX", "ai_workspace")  # bucket 下的根目录
+
 # -- Paths --
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUTS_DIR = os.path.join(os.path.dirname(BASE_DIR), "outputs")
