@@ -2,7 +2,7 @@
 import os, json, uuid, tempfile, shutil, re
 from datetime import datetime, timezone
 from fastapi import APIRouter, UploadFile, File, Depends, Form
-from fastapi.responses import StreamingResponse, JSONResponse, FileResponse, RedirectResponse
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from database import get_db, SessionLocal
@@ -311,7 +311,16 @@ async def audit_download_upload(task_id: int):
         tf = db.query(TaskFile).filter(TaskFile.task_id == task_id, TaskFile.file_type == "input").first()
         if tf and tf.oss_url:
             if OSS_ENABLED and tf.oss_url.startswith("oss://"):
-                return RedirectResponse(url=get_presigned_url(tf.oss_url))
+                # Proxy download to avoid CORS
+                from services.oss import download_to_bytes
+                try:
+                    data = download_to_bytes(tf.oss_url)
+                    import mimetypes
+                    mime = mimetypes.guess_type(tf.file_name)[0] or 'application/pdf'
+                    return Response(content=data, media_type=mime,
+                                    headers={'Content-Disposition': f'attachment; filename="{tf.file_name}"'})
+                except Exception as e:
+                    print(f"[OSS] Download failed: {e}")
             elif os.path.exists(tf.oss_url):
                 return FileResponse(tf.oss_url, filename=tf.file_name)
 
